@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Sign Classifier</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Traffic Sign Classifier</h1>
+        <div class="upload-container">
+            <div class="upload-box" id="drop-zone">
+                <input type="file" id="file-input" accept=".png" hidden>
+                <div class="upload-content">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <p>Drop your traffic sign image here<br>or <span class="browse-text">browse</span></p>
+                    <p class="small">Supports PNG images</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-container" style="display: none;">
+            <h2>Preview</h2>
+            <div class="preview-content">
+                <img id="preview-image" src="" alt="Preview">
+                <div class="prediction-result">
+                    <h3>Prediction:</h3>
+                    <p id="prediction-text">Processing...</p>
+                    <p id="confidence-text"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const previewContainer = document.querySelector('.preview-container');
+        const previewImage = document.getElementById('preview-image');
+        const predictionText = document.getElementById('prediction-text');
+        const confidenceText = document.getElementById('confidence-text');
+
+        // Handle file selection
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        // Handle drag and drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type === 'image/png') {
+                handleFile(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        });
+
+        function handleFile(file) {
+            // Display preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewContainer.style.display = 'block';
+                predictionText.textContent = 'Processing...';
+                confidenceText.textContent = '';
+            };
+            reader.readAsDataURL(file);
+
+            // Send to server for prediction
+            const formData = new FormData();
+            formData.append('image', file);
+
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    predictionText.textContent = data.prediction;
+                    confidenceText.textContent = `Confidence: ${data.confidence}`;
+                } else {
+                    predictionText.textContent = 'Error: ' + data.error;
+                }
+            })
+            .catch(error => {
+                predictionText.textContent = 'Error: Could not process image';
+                console.error('Error:', error);
+            });
+        }
+    </script>
+</body>
+</html> 
